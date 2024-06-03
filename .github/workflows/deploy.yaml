@@ -1,36 +1,56 @@
-name: CI/CD for React App
+name: CI
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
-
-permissions:
-  contents: write
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  build_and_deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
+    - name: List directory structure
+      run: ls -R ${{ github.workspace }}
 
-      - name: Install dependencies
-        run: npm install
+    - name: Verify package.json exists
+      run: |
+        PACKAGE_JSON_PATH=$(find ${{ github.workspace }} -name "package.json")
+        if [ -z "$PACKAGE_JSON_PATH" ]; then
+          echo "package.json not found"
+          exit 1
+        else
+          echo "package.json found at $PACKAGE_JSON_PATH"
+        fi
 
-      - name: Build Project
-        run: npm run build
-        env:
-          REACT_APP_WELCOME_TEXT: ${{ vars.REACT_APP_WELCOME_TEXT }}
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
 
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@4.1.0
-        with:
-          branch: gh-pages
-          folder: build
+    - name: Run npm install
+      run: |
+        PACKAGE_JSON_PATH=$(find ${{ github.workspace }} -name "package.json")
+        PACKAGE_JSON_DIR=$(dirname "$PACKAGE_JSON_PATH")
+        cd "$PACKAGE_JSON_DIR"
+        npm install
+
+    - name: Run tests
+      run: |
+        PACKAGE_JSON_PATH=$(find ${{ github.workspace }} -name "package.json")
+        PACKAGE_JSON_DIR=$(dirname "$PACKAGE_JSON_PATH")
+        cd "$PACKAGE_JSON_DIR"
+        npm test
+
+
+    - name: Deploy to GitHub Pages
+      uses: JamesIves/github-pages-deploy-action@4.1.0
+      with:
+        branch: gh-pages
+        folder: build
